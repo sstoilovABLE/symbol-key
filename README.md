@@ -2,7 +2,7 @@
 
 A tiny AutoHotkey v2 script for Windows that lets you cycle through currency symbols with a single hotkey.
 
-I used to Google-search things like "gbp symbol" "euro symbol" and copy-paste the symbol from there whenever I needed the symbol, but that felt roundabout and time-consuming. That is why I wrote this utility.
+I used to Google-search things like "gbp symbol" or "euro symbol" and copy-paste the symbol from there whenever I needed the symbol, but that felt roundabout and time-consuming. That is why I wrote this utility.
 
 People online often recommend key remapping tools, but the reality is that in something like Microsoft PowerToys, the remapping setting only lets you remap a single key, not a combination like `Shift + 4`. On top of that, key remapping utilities do not give you the flexibility to cycle through symbols of your choice the way this utility does.
 
@@ -39,7 +39,7 @@ Right-click the tray icon and choose **Settings** to open the configuration wind
 - **Add a custom symbol** — type it into the text field and click **Add**. Custom symbols can also be removed.
 - **Change the hotkey** — use the hotkey picker control to record a new key combination (default `Shift+4`).
 
-All settings are saved to `CurrencySwitcher.ini`, stored next to the script, and are loaded automatically the next time it runs. You can safely delete the .ini - it will be recreated the next time you run the script.
+All settings are saved to `CurrencySwitcher.ini`, stored next to the script, and are loaded automatically the next time it runs. You can safely delete the `.ini` - it will be recreated the next time you run the script.
 
 The tray icon menu also offers **Reload** (restart the script after editing settings or the file) and **Exit**.
 
