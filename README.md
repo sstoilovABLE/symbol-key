@@ -9,7 +9,7 @@ People online often recommend key remapping tools, but the reality is that in so
 ## Features
 
 - Cycle through currency symbols by repeatedly pressing a hotkey (default `Shift+4`)
-- Built-in symbols: $ (US Dollar), € (Euro), £ (British Pound), ₹ (Indian Rupee), ¥ (Chinese Yuan), ¥ (Japanese Yen)
+- Built-in symbols/examples: $ (US Dollar), € (Euro), £ (British Pound), ₹ (Indian Rupee), ¥ (Chinese Yuan / Japanese Yen), § (Section), © (Copyright), ™ (Trademark)
 - Add your own custom symbols
 - Enable/disable symbols and reorder them to control the cycle order
 - Choose any hotkey you like via a standard hotkey picker
