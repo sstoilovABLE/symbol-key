@@ -31,6 +31,7 @@ SettingsGui := 0
 LV := 0
 HkCtrl := 0
 CustomEdit := 0
+RowKeys := []                   ; parallel to LV rows: original (unrenamed) name of each row
 
 LoadSettings()
 ApplyHotkey(IniRead(SettingsFile, "General", "Hotkey", "+4"))
@@ -112,7 +113,7 @@ LoadSettings() {
     }
 }
 
-SaveSettings(symbols, hotkeyStr, customSymbols) {
+SaveSettings(symbols, hotkeyStr, customSymbols, names) {
     global SettingsFile
     try FileDelete(SettingsFile)
     IniWrite(hotkeyStr, SettingsFile, "General", "Hotkey")
@@ -120,6 +121,8 @@ SaveSettings(symbols, hotkeyStr, customSymbols) {
         IniWrite(sym, SettingsFile, "Symbols", "Symbol" i)
     for i, entry in customSymbols
         IniWrite(entry[1] "|" entry[2], SettingsFile, "Custom", "Custom" i)
+    for entry in names
+        IniWrite(entry[2], SettingsFile, "Names", entry[1])
 }
 
 LoadCustomSymbols() {
@@ -135,12 +138,33 @@ LoadCustomSymbols() {
     return result
 }
 
+; Names are keyed as "symbol|originalName" so renaming a symbol persists
+; even though two default symbols can share the same glyph (e.g. ¥).
+LoadNames() {
+    global SettingsFile
+    result := Map()
+    if !FileExist(SettingsFile)
+        return result
+    content := IniRead(SettingsFile, "Names", , "")
+    if (content = "")
+        return result
+    for line in StrSplit(content, "`n", "`r") {
+        if (line = "")
+            continue
+        pos := InStr(line, "=")
+        if (!pos)
+            continue
+        result[SubStr(line, 1, pos - 1)] := SubStr(line, pos + 1)
+    }
+    return result
+}
+
 ; ------------------------------------------------------------
 ; Settings GUI
 ; ------------------------------------------------------------
 
 ShowSettingsGui() {
-    global SettingsGui, LV, HkCtrl, CustomEdit
+    global SettingsGui, LV, HkCtrl, CustomEdit, RowKeys
     global DefaultSymbols, ActiveSymbols, CurrentHotkey, SettingsFile
 
     if (SettingsGui is Gui) {
@@ -151,13 +175,14 @@ ShowSettingsGui() {
     SettingsGui := Gui(, "Currency Switcher – Settings")
     SettingsGui.OnEvent("Close", (*) => (SettingsGui.Destroy(), SettingsGui := 0))
 
-    SettingsGui.Add("Text", , "Check the symbols to cycle through and set their order:")
-    LV := SettingsGui.Add("ListView", "w360 r10 Checked -Multi NoSortHdr", ["Symbol", "Currency"])
+    SettingsGui.Add("Text", , "Check the symbols to cycle through and set their order. Double-click a name to rename it:")
+    LV := SettingsGui.Add("ListView", "w360 r10 Checked -Multi NoSortHdr", ["Symbol", "Name"])
     LV.ModifyCol(1, 80)
     LV.ModifyCol(2, 250)
+    LV.OnEvent("DoubleClick", RenameRow)
 
     ; Build row list: saved order first (enabled), then remaining known symbols
-    rows := []          ; [symbol, description, enabled]
+    rows := []          ; [symbol, originalName, enabled]
     known := DefaultSymbols.Clone()
     for entry in LoadCustomSymbols()
         known.Push(entry)
@@ -174,12 +199,19 @@ ShowSettingsGui() {
     }
     for entry in known
         rows.Push([entry[1], entry[2], false])
-    for row in rows
-        LV.Add(row[3] ? "Check" : "", row[1], row[2])
+
+    names := LoadNames()
+    RowKeys := []
+    for row in rows {
+        displayName := names.Has(row[1] "|" row[2]) ? names[row[1] "|" row[2]] : row[2]
+        LV.Add(row[3] ? "Check" : "", row[1], displayName)
+        RowKeys.Push(row[2])
+    }
 
     SettingsGui.Add("Button", "xm w80", "Move Up").OnEvent("Click", (*) => MoveRow(-1))
     SettingsGui.Add("Button", "x+10 w80", "Move Down").OnEvent("Click", (*) => MoveRow(1))
-    SettingsGui.Add("Button", "x+10 w110", "Remove Custom").OnEvent("Click", RemoveCustom)
+    SettingsGui.Add("Button", "x+10 w80", "Rename").OnEvent("Click", RenameClicked)
+    SettingsGui.Add("Button", "x+10 w80", "Delete").OnEvent("Click", DeleteRow)
 
     SettingsGui.Add("Text", "xm y+15", "Add a custom symbol:")
     CustomEdit := SettingsGui.Add("Edit", "x+10 w80 Limit10")
@@ -195,7 +227,7 @@ ShowSettingsGui() {
 }
 
 MoveRow(dir) {
-    global LV
+    global LV, RowKeys
     row := LV.GetNext(0, "Focused")
     if (!row)
         return
@@ -207,6 +239,9 @@ MoveRow(dir) {
     r2 := [LV.GetText(target, 1), LV.GetText(target, 2), RowChecked(target)]
     LV.Modify(row, (r2[3] ? "Check" : "-Check") " -Select -Focus", r2[1], r2[2])
     LV.Modify(target, (r1[3] ? "Check" : "-Check") " Select Focus", r1[1], r1[2])
+    tmp := RowKeys[row]
+    RowKeys[row] := RowKeys[target]
+    RowKeys[target] := tmp
 }
 
 RowChecked(row) {
@@ -214,43 +249,73 @@ RowChecked(row) {
     return LV.GetNext(row - 1, "Checked") = row
 }
 
+RenameRow(ctrl, row) {
+    global LV, RowKeys
+    if (!row)
+        return
+    sym := LV.GetText(row, 1)
+    current := LV.GetText(row, 2)
+    ib := InputBox("Enter a name for " sym ":", "Currency Switcher", "w300 h120", current)
+    if (ib.Result != "OK")
+        return
+    newName := Trim(ib.Value)
+    if (newName = "")
+        newName := RowKeys[row]
+    LV.Modify(row, "Select Focus", sym, newName)
+}
+
+RenameClicked(*) {
+    global LV
+    row := LV.GetNext(0, "Focused")
+    if (!row) {
+        MsgBox("Select a row to rename first.", "Currency Switcher", "Iconi")
+        return
+    }
+    RenameRow(0, row)
+}
+
 AddCustom(*) {
-    global LV, CustomEdit
+    global LV, CustomEdit, RowKeys
     sym := Trim(CustomEdit.Value)
     if (sym = "") {
         MsgBox("Enter a symbol first.", "Currency Switcher", "Iconi")
         return
     }
     loop LV.GetCount() {
-        if (LV.GetText(A_Index, 1) = sym && LV.GetText(A_Index, 2) = "Custom") {
+        if (LV.GetText(A_Index, 1) = sym && RowKeys[A_Index] = "Custom") {
             MsgBox("That symbol is already in the list.", "Currency Switcher", "Iconi")
             return
         }
     }
     LV.Add("Check", sym, "Custom")
+    RowKeys.Push("Custom")
     CustomEdit.Value := ""
 }
 
-RemoveCustom(*) {
-    global LV
+DeleteRow(*) {
+    global LV, RowKeys
     row := LV.GetNext(0, "Focused")
-    if (!row)
-        return
-    if (LV.GetText(row, 2) != "Custom") {
-        MsgBox("Only custom symbols can be removed. Uncheck built-in symbols to disable them.", "Currency Switcher", "Iconi")
+    if (!row) {
+        MsgBox("Select a row to delete first.", "Currency Switcher", "Iconi")
         return
     }
     LV.Delete(row)
+    RowKeys.RemoveAt(row)
 }
 
 SaveClicked(*) {
-    global LV, HkCtrl, SettingsGui, ActiveSymbols, CycleIndex
+    global LV, HkCtrl, SettingsGui, ActiveSymbols, CycleIndex, RowKeys
     symbols := []
     customs := []
+    names := []
     loop LV.GetCount() {
         sym := LV.GetText(A_Index, 1)
-        if (LV.GetText(A_Index, 2) = "Custom")
+        name := LV.GetText(A_Index, 2)
+        orig := RowKeys[A_Index]
+        if (orig = "Custom")
             customs.Push([sym, "Custom"])
+        if (name != orig)
+            names.Push([sym "|" orig, name])
         if RowChecked(A_Index)
             symbols.Push(sym)
     }
@@ -267,7 +332,7 @@ SaveClicked(*) {
     }
     ActiveSymbols := symbols
     CycleIndex := 0
-    SaveSettings(symbols, hk, customs)
+    SaveSettings(symbols, hk, customs, names)
     SettingsGui.Destroy()
     SettingsGui := 0
     TrayTip("Settings saved. Press your hotkey to cycle: " JoinArr(symbols, " "), "Currency Switcher")
