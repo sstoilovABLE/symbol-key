@@ -7,7 +7,7 @@
 ; pressing the currency hotkey (default: Shift+4).
 ; ============================================================
 
-SettingsFile := A_ScriptDir "\settings.ini"
+SettingsFile := A_ScriptDir "\CurrencySwitcher.ini"
 CycleTimeoutMs := 3000          ; cycle resets after this much inactivity
 
 ; Built-in symbols: [symbol, description]

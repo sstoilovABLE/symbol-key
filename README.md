@@ -39,7 +39,7 @@ Right-click the tray icon and choose **Settings** to open the configuration wind
 - **Add a custom symbol** — type it into the text field and click **Add**. Custom symbols can also be removed.
 - **Change the hotkey** — use the hotkey picker control to record a new key combination (default `Shift+4`).
 
-All settings are saved to `settings.ini`, stored next to the script, and are loaded automatically the next time it runs.
+All settings are saved to `CurrencySwitcher.ini`, stored next to the script, and are loaded automatically the next time it runs. You can safely delete the .ini - it will be recreated the next time you run the script.
 
 The tray icon menu also offers **Reload** (restart the script after editing settings or the file) and **Exit**.
 
