@@ -45,6 +45,7 @@ ModifierVKs := Map(
 SettingsGui := 0
 LV := 0
 HkCtrl := 0
+LastGoodHotkey := ""            ; last complete hotkey shown in the picker
 CustomEdit := 0
 RowKeys := []                   ; parallel to LV rows: original (unrenamed) name of each row
 ExitBtnHwnd := 0                ; used to show a hover tooltip on the Exit Script button
@@ -213,7 +214,7 @@ LoadNames() {
 ; ------------------------------------------------------------
 
 ShowSettingsGui() {
-    global SettingsGui, LV, HkCtrl, CustomEdit, RowKeys, ExitBtnHwnd
+    global SettingsGui, LV, HkCtrl, LastGoodHotkey, CustomEdit, RowKeys, ExitBtnHwnd
     global DefaultSymbols, ActiveSymbols, CurrentHotkey, SettingsFile
 
     if (SettingsGui is Gui) {
@@ -273,6 +274,8 @@ ShowSettingsGui() {
 
     SettingsGui.Add("Text", "xm y+15", "Hotkey:")
     HkCtrl := SettingsGui.Add("Hotkey", "x+10 w150", CurrentHotkey)
+    LastGoodHotkey := CurrentHotkey
+    HkCtrl.OnEvent("Change", HotkeyChanged)
     SettingsGui.Add("Text", "xm", "Default hotkey: Shift+4.")
     SettingsGui.Add("Text", "xm w360",
         "Focus the field above and press the key combination you want. A few "
@@ -316,6 +319,33 @@ WatchHotkeyFocus() {
         Suspend(true)
     else if (!onField && A_IsSuspended)
         Suspend(false)
+}
+
+; The Hotkey control uses Backspace/Delete to clear itself, so those keys (and
+; a few unsupported combinations) blank it out to "None". Rather than let that
+; stick, restore the last complete hotkey. We debounce first, because while a
+; combination is being composed the value is briefly empty (e.g. while only a
+; modifier is held) — we only restore if it's *still* incomplete afterwards.
+HotkeyChanged(ctrl, *) {
+    global LastGoodHotkey
+    if IsCompleteHotkey(ctrl.Value)
+        LastGoodHotkey := ctrl.Value        ; remember every valid hotkey
+    else
+        SetTimer(RestoreHotkeyIfIncomplete, -150)
+}
+
+RestoreHotkeyIfIncomplete() {
+    global HkCtrl, LastGoodHotkey
+    try {
+        if (IsObject(HkCtrl) && !IsCompleteHotkey(HkCtrl.Value))
+            HkCtrl.Value := LastGoodHotkey
+    }
+}
+
+; A hotkey is "complete" only if it has a non-modifier key, not just modifiers
+; (or nothing, which is how the picker represents "None").
+IsCompleteHotkey(hk) {
+    return hk != "" && RegExReplace(hk, "^[#!^+<>*~$]+") != ""
 }
 
 MoveRow(dir) {
@@ -408,6 +438,7 @@ SaveClicked(*) {
 CloseSettingsGui() {
     global SettingsGui
     SetTimer(WatchHotkeyFocus, 0)
+    SetTimer(RestoreHotkeyIfIncomplete, 0)
     Suspend(false)
     if (SettingsGui is Gui) {
         SettingsGui.Destroy()

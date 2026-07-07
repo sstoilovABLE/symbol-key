@@ -43,7 +43,7 @@ All settings are saved to `CurrencySwitcher.ini`, stored next to the script, and
 
 ### Hotkeys that can't be set
 
-The hotkey picker is a standard Windows control, and it doesn't accept a few combinations. If you press one of these, the field shows `None` and, if you save while it shows `None`, your previous hotkey is kept unchanged:
+The hotkey picker is a standard Windows control, and it doesn't accept a few combinations. If you press one of these, the field reverts to your last hotkey rather than clearing:
 
 - **A modifier key on its own** — `Shift`, `Ctrl` or `Alt` by themselves. A hotkey needs a normal key in addition to any modifiers.
 - **`Ctrl + Tab`** — reserved by Windows for switching between tabs/windows.
