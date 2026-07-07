@@ -27,6 +27,19 @@ ActiveSymbols := []             ; symbols enabled for cycling, in order
 CurrentHotkey := ""             ; currently registered hotkey
 CycleIndex := 0                 ; 0 = not cycling
 LastPressTick := 0
+Suppressing := false            ; true while this script is sending its own keystrokes
+
+; Modifier keys are excluded from the "any other key" interrupt set because
+; they are held down as part of *composing* the currency hotkey itself
+; (e.g. holding Shift before pressing 4 for Shift+4); they don't represent
+; typing a separate key.
+ModifierVKs := Map(
+    0x10, true, 0x11, true, 0x12, true,     ; Shift, Ctrl, Alt (generic)
+    0x5B, true, 0x5C, true,                 ; LWin, RWin
+    0xA0, true, 0xA1, true,                 ; L/R Shift
+    0xA2, true, 0xA3, true,                 ; L/R Ctrl
+    0xA4, true, 0xA5, true,                 ; L/R Alt
+)
 
 ; GUI globals
 SettingsGui := 0
@@ -40,6 +53,7 @@ OnMessage(0x0200, WM_MOUSEMOVE)   ; WM_MOUSEMOVE: hover tooltip
 
 LoadSettings()
 ApplyHotkey(IniRead(SettingsFile, "General", "Hotkey", "+4"))
+RegisterInterruptKeys()
 
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Settings", (*) => ShowSettingsGui())
@@ -69,7 +83,7 @@ ApplyHotkey(newHotkey) {
 }
 
 OnCurrencyKey(*) {
-    global CycleIndex, LastPressTick, ActiveSymbols
+    global CycleIndex, LastPressTick, ActiveSymbols, Suppressing
     if (ActiveSymbols.Length = 0) {
         ; Nothing enabled: pass the key through as typed
         PassThrough()
@@ -81,20 +95,51 @@ OnCurrencyKey(*) {
     } else {
         ; Delete the previously typed symbol, then advance
         prev := ActiveSymbols[CycleIndex]
+        Suppressing := true
         Send("{BS " StrLen(prev) "}")
+        Suppressing := false
         CycleIndex := Mod(CycleIndex, ActiveSymbols.Length) + 1
     }
+    Suppressing := true
     SendText(ActiveSymbols[CycleIndex])
+    Suppressing := false
     LastPressTick := now
 }
 
+; Registers every keyboard key (except modifiers) as a pass-through hotkey
+; that resets the cycle. This way, pressing any other key breaks the "keep
+; pressing to cycle" flow immediately, rather than only after the 3-second
+; timeout. AHK gives an exact-modifier hotkey (like the currency hotkey
+; itself) precedence over these "*"-wildcard ones for the same keystroke,
+; so this doesn't interfere with the currency hotkey's own key.
+RegisterInterruptKeys() {
+    global ModifierVKs
+    loop 254 {
+        vk := A_Index
+        if ModifierVKs.Has(vk)
+            continue
+        try Hotkey(Format("~*vk{:X}", vk), ResetCycle, "On")
+    }
+}
+
+; Ignore resets caused by this script's own simulated keystrokes (e.g. the
+; backspace/retype used while cycling), so cycling doesn't reset itself.
+ResetCycle(*) {
+    global CycleIndex, Suppressing
+    if Suppressing
+        return
+    CycleIndex := 0
+}
+
 PassThrough() {
-    global CurrentHotkey
+    global CurrentHotkey, Suppressing
     ; Re-send the hotkey's own key so it behaves normally
     key := RegExReplace(CurrentHotkey, "^[#!^+<>*~$]+")
     mods := SubStr(CurrentHotkey, 1, StrLen(CurrentHotkey) - StrLen(key))
     mods := RegExReplace(mods, "[*~$<>]")   ; strip non-modifier prefixes
+    Suppressing := true
     Send("{Blind}" mods "{" key "}")
+    Suppressing := false
 }
 
 ; ------------------------------------------------------------
@@ -179,7 +224,11 @@ ShowSettingsGui() {
     SettingsGui := Gui(, "Currency Switcher – Settings")
     SettingsGui.OnEvent("Close", (*) => (SettingsGui.Destroy(), SettingsGui := 0))
 
-    SettingsGui.Add("Text", "w360", "Check the symbols to cycle through and set their order:")
+    SettingsGui.Add("Text", "w360", "Edit the symbols to cycle through and set their order.")
+    SettingsGui.Add("Text", "w360",
+        "Press the hotkey repeatedly to cycle. The cycle resets after "
+        Round(CycleTimeoutMs / 1000) " seconds of inactivity, or as soon as "
+        "you press any other keyboard key — whichever happens first.")
     LV := SettingsGui.Add("ListView", "w360 r10 Checked -Multi NoSortHdr", ["Symbol", "Name"])
     LV.ModifyCol(1, 80)
     LV.ModifyCol(2, 250)
@@ -223,7 +272,8 @@ ShowSettingsGui() {
 
     SettingsGui.Add("Text", "xm y+15", "Hotkey:")
     HkCtrl := SettingsGui.Add("Hotkey", "x+10 w150", CurrentHotkey)
-    SettingsGui.Add("Text", "xm", "(Default is Shift+4. Leave as-is unless you want a different key.)")
+    SettingsGui.Add("Text", "xm", "Default hotkey: Shift+4.")
+    SettingsGui.Add("Text", "xm", "Focus the field above and press the key combination you want.")
 
     SettingsGui.Add("Button", "xm y+15 w100 Default", "Save").OnEvent("Click", SaveClicked)
     SettingsGui.Add("Button", "x+10 w100", "Cancel").OnEvent("Click", (*) => (SettingsGui.Destroy(), SettingsGui := 0))

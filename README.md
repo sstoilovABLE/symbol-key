@@ -48,11 +48,18 @@ The tray icon menu also offers **Reload** (restart the script after editing sett
 Each press of the hotkey either types the next symbol or replaces the one just typed, depending on timing:
 
 - **First press**: types the first enabled symbol in your configured order, e.g. `$`.
-- **Press again within ~3 seconds**: the script backspaces the previous symbol and types the next one in order, e.g. `$` becomes `€`.
+- **Press again within the 3-second window**: the script backspaces the previous symbol and types the next one in order, e.g. `$` becomes `€`.
 - **Keep pressing**: continues advancing through the list, e.g. `€` becomes `£`.
 - **One more press**: cycles back to the beginning, e.g. `£` becomes `$` again.
 
-The cycle resets — so the next press starts over from the first symbol — after about 3 seconds without pressing the hotkey. If you type other text in between presses within that window, press elsewhere or wait a moment before starting a new cycle.
+### When the cycle resets
+
+The cycle resets — so the next press starts over from the first symbol — as soon as either of these happens, whichever comes first:
+
+- **The 3-second window elapses.** If you don't press the hotkey again within **3 seconds**, the cycle ends and the next press starts fresh.
+- **You press any other keyboard key.** Typing anything else — including arrow keys, Home/End, Page Up/Down, Delete, Enter, Tab, Escape, or any regular character — ends the cycle immediately, so your next hotkey press inserts the first symbol (`$`) again instead of continuing where the cycle left off. (Holding a modifier key like Shift or Ctrl by itself doesn't count, since that's how you hold the hotkey down in the first place.)
+
+This 3-second window is also noted in the Settings window for reference.
 
 ## Notes / Limitations
 
