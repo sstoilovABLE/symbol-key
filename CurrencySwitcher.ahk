@@ -35,7 +35,6 @@ RowKeys := []                   ; parallel to LV rows: original (unrenamed) name
 ExitBtnHwnd := 0                ; used to show a hover tooltip on the Exit Script button
 
 OnMessage(0x0200, WM_MOUSEMOVE)   ; WM_MOUSEMOVE: hover tooltip
-OnMessage(0x002B, WM_DRAWITEM)    ; WM_DRAWITEM: paint the red Exit Script button
 
 LoadSettings()
 ApplyHotkey(IniRead(SettingsFile, "General", "Hotkey", "+4"))
@@ -225,18 +224,17 @@ ShowSettingsGui() {
     SettingsGui.Add("Text", "xm", "(Default is Shift+4. Leave as-is unless you want a different key.)")
 
     SettingsGui.Add("Button", "xm y+15 w100 Default", "Save").OnEvent("Click", SaveClicked)
-    CancelBtn := SettingsGui.Add("Button", "x+10 w100", "Cancel")
-    CancelBtn.OnEvent("Click", (*) => (SettingsGui.Destroy(), SettingsGui := 0))
+    SettingsGui.Add("Button", "x+10 w100", "Cancel").OnEvent("Click", (*) => (SettingsGui.Destroy(), SettingsGui := 0))
 
-    ; Plain Win32 push buttons ignore any custom text/background color, themed or not -
-    ; only owner-drawn buttons actually let us paint red text/border ourselves (see
-    ; WM_DRAWITEM below). Right-aligned to the ListView's right edge.
-    CancelBtn.GetPos(&cbY,, , &cbH)
-    LV.GetPos(&lvX,, &lvW)
-    exitX := lvX + lvW - 100
-    ExitBtn := SettingsGui.Add("Button", "x" exitX " y" cbY " w100 h" cbH " +0x0B", "Exit Script")
+    ; Plain push buttons ignore custom text color, so a pale red fill is the
+    ; simplest reliable stand-in for a "red" button (shows as a red-tinted edge).
+    ExitBtn := SettingsGui.Add("Button", "x+10 w100 BackgroundFFE0E0", "Exit Script")
     ExitBtn.OnEvent("Click", ExitClicked)
     ExitBtnHwnd := ExitBtn.Hwnd
+
+    ; Small red dot next to the button as an extra visual warning indicator.
+    SettingsGui.Add("Text", "x+6 yp+6 w10 h10 BackgroundRed")
+
     SettingsGui.Show()
 }
 
@@ -381,55 +379,6 @@ WM_MOUSEMOVE(wParam, lParam, msg, hwnd) {
         ToolTip()
         shown := false
     }
-}
-
-; Custom-paints the owner-drawn Exit Script button with a red border/text,
-; since regular push buttons ignore custom colors entirely.
-WM_DRAWITEM(wParam, lParam, msg, hwnd) {
-    global ExitBtnHwnd
-    if !ExitBtnHwnd
-        return
-
-    hwndItem := NumGet(lParam, 24, "ptr")
-    if (hwndItem != ExitBtnHwnd)
-        return
-
-    hDC := NumGet(lParam, 32, "ptr")
-    left := NumGet(lParam, 40, "int")
-    top := NumGet(lParam, 44, "int")
-    right := NumGet(lParam, 48, "int")
-    bottom := NumGet(lParam, 52, "int")
-    itemState := NumGet(lParam, 16, "uint")
-    pressed := itemState & 0x0001   ; ODS_SELECTED
-
-    rect := Buffer(16, 0)
-    NumPut("int", left, rect, 0), NumPut("int", top, rect, 4)
-    NumPut("int", right, rect, 8), NumPut("int", bottom, rect, 12)
-
-    fillColor := pressed ? 0xE0C0C0 : 0xF6DEDE
-    hBrush := DllCall("gdi32\CreateSolidBrush", "uint", BGR(fillColor), "ptr")
-    DllCall("user32\FillRect", "ptr", hDC, "ptr", rect, "ptr", hBrush)
-    DllCall("gdi32\DeleteObject", "ptr", hBrush)
-
-    hPen := DllCall("gdi32\CreatePen", "int", 0, "int", 2, "uint", BGR(0xC00000), "ptr")
-    hNullBrush := DllCall("gdi32\GetStockObject", "int", 5, "ptr")   ; NULL_BRUSH
-    hOldPen := DllCall("gdi32\SelectObject", "ptr", hDC, "ptr", hPen, "ptr")
-    hOldBrush := DllCall("gdi32\SelectObject", "ptr", hDC, "ptr", hNullBrush, "ptr")
-    DllCall("gdi32\Rectangle", "ptr", hDC, "int", left, "int", top, "int", right, "int", bottom)
-    DllCall("gdi32\SelectObject", "ptr", hDC, "ptr", hOldPen)
-    DllCall("gdi32\SelectObject", "ptr", hDC, "ptr", hOldBrush)
-    DllCall("gdi32\DeleteObject", "ptr", hPen)
-
-    DllCall("gdi32\SetTextColor", "ptr", hDC, "uint", BGR(0xC00000))
-    DllCall("gdi32\SetBkMode", "ptr", hDC, "int", 1)   ; TRANSPARENT
-    DllCall("user32\DrawText", "ptr", hDC, "str", "Exit Script", "int", -1, "ptr", rect, "uint", 0x25)   ; DT_CENTER|DT_VCENTER|DT_SINGLELINE
-
-    return true
-}
-
-; Converts 0xRRGGBB to a Win32 COLORREF (0x00BBGGRR).
-BGR(rgb) {
-    return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
 }
 
 JoinArr(arr, sep) {
