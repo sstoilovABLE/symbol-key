@@ -218,6 +218,7 @@ ShowSettingsGui() {
 
     if (SettingsGui is Gui) {
         SettingsGui.Show()
+        WinActivate("ahk_id " SettingsGui.Hwnd)
         return
     }
 
@@ -287,6 +288,7 @@ ShowSettingsGui() {
     ExitBtnHwnd := ExitBtn.Hwnd
 
     SettingsGui.Show()
+    WinActivate("ahk_id " SettingsGui.Hwnd)
 }
 
 MoveRow(dir) {
