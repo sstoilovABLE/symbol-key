@@ -227,13 +227,12 @@ ShowSettingsGui() {
     SettingsGui.Add("Button", "x+10 w100", "Cancel").OnEvent("Click", (*) => (SettingsGui.Destroy(), SettingsGui := 0))
 
     ; Plain push buttons ignore custom text color, so a pale red fill is the
-    ; simplest reliable stand-in for a "red" button (shows as a red-tinted edge).
-    ExitBtn := SettingsGui.Add("Button", "x+10 w100 BackgroundFFE0E0", "Exit Script")
+    ; simplest reliable stand-in for a "red" button. Right-aligned to the
+    ; ListView's right edge (MarginX + its width of 360).
+    exitX := SettingsGui.MarginX + 360 - 100
+    ExitBtn := SettingsGui.Add("Button", "x" exitX " yp w100 BackgroundFFE0E0", "Exit Script")
     ExitBtn.OnEvent("Click", ExitClicked)
     ExitBtnHwnd := ExitBtn.Hwnd
-
-    ; Small red dot next to the button as an extra visual warning indicator.
-    SettingsGui.Add("Text", "x+6 yp+6 w10 h10 BackgroundRed")
 
     SettingsGui.Show()
 }
