@@ -43,9 +43,8 @@ A_TrayMenu.Add("Exit", (*) => ExitApp())
 A_TrayMenu.Default := "Settings"
 A_IconTip := "Currency Switcher"
 
-; Show the GUI on first run (no settings saved yet)
-if !FileExist(SettingsFile)
-    ShowSettingsGui()
+; Always show the settings GUI on launch
+ShowSettingsGui()
 
 return
 
