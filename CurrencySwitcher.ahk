@@ -40,6 +40,7 @@ OnMessage(0x0200, WM_MOUSEMOVE)   ; WM_MOUSEMOVE: hover tooltip
 
 LoadSettings()
 ApplyHotkey(IniRead(SettingsFile, "General", "Hotkey", "+4"))
+RegisterInterruptKeys()
 
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Settings", (*) => ShowSettingsGui())
@@ -86,6 +87,27 @@ OnCurrencyKey(*) {
     }
     SendText(ActiveSymbols[CycleIndex])
     LastPressTick := now
+}
+
+; Keys that move the caret or otherwise break the "keep pressing to cycle"
+; flow. Once any of these fire, the next hotkey press must start a fresh
+; symbol rather than backspacing over whatever is now under the caret.
+RegisterInterruptKeys() {
+    interruptKeys := [
+        "Left", "Right", "Up", "Down",
+        "Home", "End", "PgUp", "PgDn",
+        "Delete", "Enter", "Tab", "Escape",
+        "LButton", "RButton", "MButton",
+    ]
+    for key in interruptKeys {
+        ; "~*" keeps the key's normal behavior and ignores modifier state.
+        try Hotkey("~*" key, (*) => ResetCycle(), "On")
+    }
+}
+
+ResetCycle() {
+    global CycleIndex
+    CycleIndex := 0
 }
 
 PassThrough() {
