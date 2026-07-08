@@ -2,12 +2,12 @@
 #SingleInstance Force
 
 ; ============================================================
-; Currency Switcher
-; Cycle through your chosen currency symbols by repeatedly
-; pressing the currency hotkey (default: Shift+4).
+; SymbolKey
+; Cycle through your chosen symbols by repeatedly pressing
+; a configurable hotkey (default: Shift+4).
 ; ============================================================
 
-SettingsFile := A_ScriptDir "\CurrencySwitcher.ini"
+SettingsFile := A_ScriptDir "\SymbolKey.ini"
 CycleTimeoutMs := 3000          ; cycle resets after this much inactivity
 
 ; Built-in symbols: [symbol, description]
@@ -30,7 +30,7 @@ LastPressTick := 0
 Suppressing := false            ; true while this script is sending its own keystrokes
 
 ; Modifier keys are excluded from the "any other key" interrupt set because
-; they are held down as part of *composing* the currency hotkey itself
+; they are held down as part of *composing* the symbol hotkey itself
 ; (e.g. holding Shift before pressing 4 for Shift+4); they don't represent
 ; typing a separate key.
 ModifierVKs := Map(
@@ -61,8 +61,8 @@ A_TrayMenu.Add("Settings", (*) => ShowSettingsGui())
 A_TrayMenu.Add("Reload", (*) => Reload())
 A_TrayMenu.Add("Exit", (*) => ExitApp())
 A_TrayMenu.Default := "Settings"
-A_IconTip := "Currency Switcher"
-iconPath := A_ScriptDir "\CurrencySwitcher.ico"
+A_IconTip := "SymbolKey"
+iconPath := A_ScriptDir "\SymbolKey.ico"
 if !A_IsCompiled && FileExist(iconPath)
     TraySetIcon(iconPath)
 
@@ -83,10 +83,10 @@ ApplyHotkey(newHotkey) {
     CurrentHotkey := newHotkey
     CycleIndex := 0
     if (newHotkey != "")
-        Hotkey(newHotkey, OnCurrencyKey, "On")
+        Hotkey(newHotkey, OnSymbolKey, "On")
 }
 
-OnCurrencyKey(*) {
+OnSymbolKey(*) {
     global CycleIndex, LastPressTick, ActiveSymbols, Suppressing
     if (ActiveSymbols.Length = 0) {
         ; Nothing enabled: pass the key through as typed
@@ -113,9 +113,9 @@ OnCurrencyKey(*) {
 ; Registers every keyboard key (except modifiers) as a pass-through hotkey
 ; that resets the cycle. This way, pressing any other key breaks the "keep
 ; pressing to cycle" flow immediately, rather than only after the 3-second
-; timeout. AHK gives an exact-modifier hotkey (like the currency hotkey
+; timeout. AHK gives an exact-modifier hotkey (like the symbol hotkey
 ; itself) precedence over these "*"-wildcard ones for the same keystroke,
-; so this doesn't interfere with the currency hotkey's own key.
+; so this doesn't interfere with the symbol hotkey's own key.
 RegisterInterruptKeys() {
     global ModifierVKs
     loop 254 {
@@ -227,7 +227,7 @@ ShowSettingsGui() {
         return
     }
 
-    SettingsGui := Gui(, "Currency Switcher – Settings")
+    SettingsGui := Gui(, "SymbolKey - Settings")
     SettingsGui.OnEvent("Close", (*) => CloseSettingsGui())
 
     SettingsGui.Add("Text", "w360", "Edit the symbols to cycle through and set their order.")
@@ -296,7 +296,7 @@ ShowSettingsGui() {
     ExitBtn.OnEvent("Click", ExitClicked)
     ExitBtnHwnd := ExitBtn.Hwnd
 
-    ; Watch which control has focus so we can silence the currency hotkey only
+    ; Watch which control has focus so we can silence the symbol hotkey only
     ; while the hotkey field is focused (see WatchHotkeyFocus).
     SetTimer(WatchHotkeyFocus, 30)
 
@@ -304,9 +304,9 @@ ShowSettingsGui() {
     WinActivate("ahk_id " SettingsGui.Hwnd)
 }
 
-; While the hotkey field has keyboard focus, suspend the currency hotkey and
+; While the hotkey field has keyboard focus, suspend the symbol hotkey and
 ; the per-key interrupt hotkeys. Otherwise pressing e.g. Shift+4 to *set* the
-; hotkey would instead fire the currency hotkey — swallowing the keystroke
+; hotkey would instead fire the symbol hotkey - swallowing the keystroke
 ; before the field could see it, which is what made Shift+4 show up as "None".
 ; The Hotkey control has no Focus/LoseFocus event, so we poll Gui.FocusedCtrl
 ; (A_IsSuspended is the single source of truth, so this stays correct even
@@ -382,7 +382,7 @@ RenameRow(ctrl, row) {
         return
     sym := LV.GetText(row, 1)
     current := LV.GetText(row, 2)
-    ib := InputBox("Enter a name for " sym ":", "Currency Switcher", "w300 h120", current)
+    ib := InputBox("Enter a name for " sym ":", "SymbolKey", "w300 h120", current)
     if (ib.Result != "OK")
         return
     newName := Trim(ib.Value)
@@ -395,7 +395,7 @@ RenameClicked(*) {
     global LV
     row := LV.GetNext(0, "Focused")
     if (!row) {
-        MsgBox("Select a row to rename first.", "Currency Switcher", "Iconi")
+        MsgBox("Select a row to rename first.", "SymbolKey", "Iconi")
         return
     }
     RenameRow(0, row)
@@ -405,12 +405,12 @@ AddCustom(*) {
     global LV, CustomEdit, RowKeys
     sym := Trim(CustomEdit.Value)
     if (sym = "") {
-        MsgBox("Enter a symbol first.", "Currency Switcher", "Iconi")
+        MsgBox("Enter a symbol first.", "SymbolKey", "Iconi")
         return
     }
     loop LV.GetCount() {
         if (LV.GetText(A_Index, 1) = sym && RowKeys[A_Index] = "Custom") {
-            MsgBox("That symbol is already in the list.", "Currency Switcher", "Iconi")
+            MsgBox("That symbol is already in the list.", "SymbolKey", "Iconi")
             return
         }
     }
@@ -423,7 +423,7 @@ DeleteRow(*) {
     global LV, RowKeys
     row := LV.GetNext(0, "Focused")
     if (!row) {
-        MsgBox("Select a row to delete first.", "Currency Switcher", "Iconi")
+        MsgBox("Select a row to delete first.", "SymbolKey", "Iconi")
         return
     }
     LV.Delete(row)
@@ -435,7 +435,7 @@ SaveClicked(*) {
     if !ApplySettingsFromGui()
         return
     CloseSettingsGui()
-    TrayTip("Settings saved. Press your hotkey to cycle: " JoinArr(ActiveSymbols, " "), "Currency Switcher")
+    TrayTip("Settings saved. Press your hotkey to cycle: " JoinArr(ActiveSymbols, " "), "SymbolKey")
 }
 
 ; Closes the window: stop watching for focus and make sure the app's hotkeys
@@ -477,7 +477,7 @@ ApplySettingsFromGui() {
             symbols.Push(sym)
     }
     if (symbols.Length = 0) {
-        MsgBox("Select at least one symbol.", "Currency Switcher", "Icon!")
+        MsgBox("Select at least one symbol.", "SymbolKey", "Icon!")
         return false
     }
     ; A blank value means the picker is showing "None" (e.g. the user pressed a
@@ -487,7 +487,7 @@ ApplySettingsFromGui() {
     try {
         ApplyHotkey(hk)
     } catch as e {
-        MsgBox("Could not register that hotkey: " e.Message, "Currency Switcher", "Icon!")
+        MsgBox("Could not register that hotkey: " e.Message, "SymbolKey", "Icon!")
         return false
     }
     ActiveSymbols := symbols
@@ -502,7 +502,7 @@ WM_MOUSEMOVE(wParam, lParam, msg, hwnd) {
     static shown := false
     if (ExitBtnHwnd && hwnd = ExitBtnHwnd) {
         if !shown {
-            ToolTip("Saves your current settings, then exits Currency Switcher")
+            ToolTip("Saves your current settings, then exits SymbolKey")
             shown := true
         }
     } else if shown {

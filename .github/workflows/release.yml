@@ -65,14 +65,14 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
-          $outputPath = Join-Path $env:RUNNER_TEMP 'CurrencySwitcher.exe'
-          $iconPath = Join-Path $PWD 'CurrencySwitcher.ico'
+          $outputPath = Join-Path $env:RUNNER_TEMP 'SymbolKey.exe'
+          $iconPath = Join-Path $PWD 'SymbolKey.ico'
 
           if (-not (Test-Path $iconPath)) {
             throw "Icon file not found: $iconPath"
           }
 
-          & "$env:AHK2EXE" /in ".\CurrencySwitcher.ahk" /out "$outputPath" /base "$env:AHK_BASE_EXE" /icon "$iconPath"
+          & "$env:AHK2EXE" /in ".\SymbolKey.ahk" /out "$outputPath" /base "$env:AHK_BASE_EXE" /icon "$iconPath"
 
           if (-not (Test-Path $outputPath)) {
             throw "Compilation finished without creating $outputPath."
@@ -91,7 +91,7 @@ jobs:
           gh release create "$env:GITHUB_REF_NAME" "$env:RELEASE_ASSET" `
             --title "$env:GITHUB_REF_NAME" `
             --notes-from-tag
-            
+
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
         run: echo "Dry run only; release publishing skipped."

@@ -51,24 +51,24 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & "$env:AHK_EXE" /ErrorStdOut /Validate ".\CurrencySwitcher.ahk"
+          & "$env:AHK_EXE" /ErrorStdOut /Validate ".\SymbolKey.ahk"
 
       - name: Best practice checks
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
 
-          $scriptPath = '.\CurrencySwitcher.ahk'
+          $scriptPath = '.\SymbolKey.ahk'
           $content = Get-Content -Path $scriptPath -Raw -Encoding UTF8
           $lines = Get-Content -Path $scriptPath -Encoding UTF8
           $failures = [System.Collections.Generic.List[string]]::new()
 
           if ($content -notmatch '(?m)^\s*#Requires\s+AutoHotkey\s+v2') {
-            $failures.Add('CurrencySwitcher.ahk must declare #Requires AutoHotkey v2.')
+            $failures.Add('SymbolKey.ahk must declare #Requires AutoHotkey v2.')
           }
 
           if ($content -notmatch '(?m)^\s*#SingleInstance\s+\w+') {
-            $failures.Add('CurrencySwitcher.ahk should declare #SingleInstance to avoid duplicate running copies.')
+            $failures.Add('SymbolKey.ahk should declare #SingleInstance to avoid duplicate running copies.')
           }
 
           for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -78,7 +78,7 @@ jobs:
           }
 
           if ($content -match '[A-Za-z]:\\Users\\') {
-            $failures.Add('CurrencySwitcher.ahk should not contain hardcoded user-profile paths.')
+            $failures.Add('SymbolKey.ahk should not contain hardcoded user-profile paths.')
           }
 
           if ($failures.Count -gt 0) {
