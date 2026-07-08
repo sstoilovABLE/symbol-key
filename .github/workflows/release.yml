@@ -59,8 +59,13 @@ jobs:
           $ErrorActionPreference = 'Stop'
 
           $outputPath = Join-Path $env:RUNNER_TEMP 'CurrencySwitcher.exe'
+          $iconPath = Join-Path $PWD 'CurrencySwitcher.ico'
 
-          & "$env:AHK2EXE" /in ".\CurrencySwitcher.ahk" /out "$outputPath" /base "$env:AHK_BASE_EXE"
+          if (-not (Test-Path $iconPath)) {
+            throw "Icon file not found: $iconPath"
+          }
+
+          & "$env:AHK2EXE" /in ".\CurrencySwitcher.ahk" /out "$outputPath" /base "$env:AHK_BASE_EXE" /icon "$iconPath"
 
           if (-not (Test-Path $outputPath)) {
             throw "Compilation finished without creating $outputPath."

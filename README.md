@@ -1,5 +1,9 @@
 # Currency Switcher
 
+<div style="float: left; margin-right: 16px; margin-bottom: 8px;">
+  <img src="compilation-assets/CurrencySwitcher-icon-128-256.png" alt="Currency Switcher logo" width="128" />
+</div>
+
 A tiny AutoHotkey v2 script for Windows that lets you cycle through currency symbols with a single hotkey.
 
 I used to Google-search things like "gbp symbol" or "euro symbol" and copy-paste the symbol from there whenever I needed the symbol, but that felt roundabout and time-consuming. That is why I wrote this utility.
@@ -76,6 +80,7 @@ This 3-second window is also noted in the Settings window for reference.
 - Some applications handle simulated backspace or Unicode input differently, which can occasionally leave stray characters or fail to delete cleanly.
 - Secure/password input fields may block simulated keystrokes entirely, preventing the script from working there.
 - Custom symbols made up of multiple code units (e.g. some emoji) may not always delete cleanly with a single backspace in every application.
+- The project icon PNGs were generated with help from Claude Code. The .ico file was created manually with Greenfish Icon Editor Pro so the compiled executable can use the different PNGs at different icon sizes.
 
 ## License
 

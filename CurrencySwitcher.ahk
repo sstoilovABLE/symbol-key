@@ -62,6 +62,9 @@ A_TrayMenu.Add("Reload", (*) => Reload())
 A_TrayMenu.Add("Exit", (*) => ExitApp())
 A_TrayMenu.Default := "Settings"
 A_IconTip := "Currency Switcher"
+iconPath := A_ScriptDir "\CurrencySwitcher.ico"
+if !A_IsCompiled && FileExist(iconPath)
+    TraySetIcon(iconPath)
 
 ; Always show the settings GUI on launch
 ShowSettingsGui()
