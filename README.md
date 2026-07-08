@@ -124,7 +124,7 @@ Yes. SymbolKey can insert any symbol or short Unicode text that AutoHotkey can s
 
 ### Is this the same as an Alt-code tool?
 
-No. Alt codes require remembering numeric codes and can vary by environment. SymbolKey gives you one configurable hotkey and a visible list of symbols.
+No. Crucially, **Alt codes require having a NumPad** on your keyboard, as well as remembering numeric codes. Alt codes can also vary by environment. SymbolKey gives you a simple configurable hotkey and a visible list of symbols.
 
 ### Can I change the default `Shift+4` hotkey?
 
