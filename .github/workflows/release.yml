@@ -90,7 +90,21 @@ jobs:
             throw "Icon file not found: $iconPath"
           }
 
-          & "$env:AHK2EXE" /in ".\CurrencySwitcher.ahk" /out "$outputPath" /base "$env:AHK_BASE_EXE" /icon "$iconPath"
+          # Ahk2Exe.exe is a GUI-subsystem application, so invoking it directly
+          # returns before compilation completes. Start-Process -Wait blocks
+          # until the process exits so the output file is guaranteed to exist.
+          $ahk2ExeArgs = @(
+            '/in', '.\CurrencySwitcher.ahk',
+            '/out', $outputPath,
+            '/base', $env:AHK_BASE_EXE,
+            '/icon', $iconPath
+          )
+
+          $process = Start-Process -FilePath $env:AHK2EXE -ArgumentList $ahk2ExeArgs -Wait -PassThru -NoNewWindow
+
+          if ($process.ExitCode -ne 0) {
+            throw "Ahk2Exe exited with code $($process.ExitCode)."
+          }
 
           if (-not (Test-Path $outputPath)) {
             throw "Compilation finished without creating $outputPath."
