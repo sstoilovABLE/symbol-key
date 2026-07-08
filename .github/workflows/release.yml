@@ -26,10 +26,18 @@ jobs:
 
       - name: Install AutoHotkey v2 and Ahk2Exe compiler
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
 
-          $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/latest'
+          # Authenticate the GitHub API calls below. Anonymous requests are
+          # limited to 60/hour per runner IP, which is shared across GitHub's
+          # hosted runners and is routinely exhausted; authenticated requests
+          # get 1,000/hour, so send the workflow token with each API call.
+          $apiHeaders = @{ Authorization = "Bearer $env:GH_TOKEN" }
+
+          $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/AutoHotkey/AutoHotkey/releases/latest' -Headers $apiHeaders
           $asset = $release.assets |
             Where-Object { $_.name -match '^AutoHotkey_.*\.zip$' } |
             Select-Object -First 1
@@ -47,7 +55,7 @@ jobs:
           # The AutoHotkey runtime zip ships only the interpreter executables.
           # The Ahk2Exe compiler is released from a separate repository, so it
           # must be downloaded and extracted independently.
-          $ahk2ExeRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest'
+          $ahk2ExeRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest' -Headers $apiHeaders
           $ahk2ExeAsset = $ahk2ExeRelease.assets |
             Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' } |
             Select-Object -First 1
