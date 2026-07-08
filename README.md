@@ -151,6 +151,24 @@ Settings are stored in `SymbolKey.ini` next to the script.
 - Custom symbols made up of multiple code units, such as some emoji, may not always delete cleanly with a single backspace in every application.
 - The project icon PNGs were generated with help from Claude Code. The `.ico` file was created manually with Greenfish Icon Editor Pro so the compiled executable can use the different PNGs at different icon sizes.
 
+## Continuous Integration & Releases
+
+The repository uses two GitHub Actions workflows, defined in `.github/workflows/`. Both run on Windows runners so they exercise AutoHotkey in its native environment.
+
+| Workflow | File | Trigger | What it does |
+| --- | --- | --- | --- |
+| AutoHotkey lint | `autohotkey-lint.yml` | On every push, and on pull requests targeting `main` | Installs AutoHotkey v2, runs a syntax check (`/Validate`) on `SymbolKey.ahk`, and enforces a few best practices: the script must declare `#Requires AutoHotkey v2` and `#SingleInstance`, must not contain trailing whitespace or hardcoded user-profile paths. |
+| Release | `release.yml` | Manually via **Run workflow**, or automatically when a tag is pushed | Installs AutoHotkey v2 and the Ahk2Exe compiler, compiles `SymbolKey.ahk` into `SymbolKey.exe` (using `SymbolKey.ico` for the icon), uploads it as a build artifact, and publishes a GitHub release with the compiled executable attached. |
+
+### Cutting a release
+
+The Release workflow derives the release tag from the ref it runs on, so publish it **from a tag**:
+
+- **Push a tag** (for example `v1.0`) to trigger the workflow automatically, or
+- Use **Actions → Release → Run workflow** and select the tag as the ref.
+
+Use an **annotated** tag (`git tag -a v1.0 -m "…"`); the workflow pulls the release notes from the tag message (`--notes-from-tag`). The `dry_run` input defaults to `true`, which compiles and uploads the artifact but skips publishing — set it to `false` to actually create the release. The workflows install the latest AutoHotkey and Ahk2Exe releases from the GitHub API using the built-in workflow token, so no additional secrets are required.
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
