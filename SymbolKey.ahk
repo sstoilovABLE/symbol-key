@@ -7,6 +7,7 @@
 ; a configurable hotkey (default: Shift+4).
 ; ============================================================
 
+ScriptVersion := "1.0"          ; shown in the Settings window title
 SettingsFile := A_ScriptDir "\SymbolKey.ini"
 CycleTimeoutMs := 3000          ; cycle resets after this much inactivity
 
@@ -218,7 +219,7 @@ LoadNames() {
 
 ShowSettingsGui() {
     global SettingsGui, LV, HkCtrl, LastGoodHotkey, CustomEdit, RowKeys, ExitBtnHwnd
-    global DefaultSymbols, ActiveSymbols, CurrentHotkey, SettingsFile
+    global DefaultSymbols, ActiveSymbols, CurrentHotkey, SettingsFile, ScriptVersion
 
     if (SettingsGui is Gui) {
         SettingsGui.Show()
@@ -227,7 +228,7 @@ ShowSettingsGui() {
         return
     }
 
-    SettingsGui := Gui(, "SymbolKey - Settings")
+    SettingsGui := Gui(, "SymbolKey - Settings (v" ScriptVersion ")")
     SettingsGui.OnEvent("Close", (*) => CloseSettingsGui())
 
     SettingsGui.Add("Text", "w360", "Edit the symbols to cycle through and set their order.")
