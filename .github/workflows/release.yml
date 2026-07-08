@@ -24,7 +24,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install AutoHotkey v2
+      - name: Install AutoHotkey v2 and Ahk2Exe compiler
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -44,7 +44,25 @@ jobs:
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
           Expand-Archive -Path $zipPath -DestinationPath $installDir -Force
 
-          $ahk2Exe = Get-ChildItem -Path $installDir -Recurse -Filter 'Ahk2Exe.exe' |
+          # The AutoHotkey runtime zip ships only the interpreter executables.
+          # The Ahk2Exe compiler is released from a separate repository, so it
+          # must be downloaded and extracted independently.
+          $ahk2ExeRelease = Invoke-RestMethod -Uri 'https://api.github.com/repos/AutoHotkey/Ahk2Exe/releases/latest'
+          $ahk2ExeAsset = $ahk2ExeRelease.assets |
+            Where-Object { $_.name -match '^Ahk2Exe.*\.zip$' } |
+            Select-Object -First 1
+
+          if (-not $ahk2ExeAsset) {
+            throw 'Could not find the Ahk2Exe release zip asset.'
+          }
+
+          $ahk2ExeZipPath = Join-Path $env:RUNNER_TEMP $ahk2ExeAsset.name
+          $ahk2ExeInstallDir = Join-Path $env:RUNNER_TEMP 'ahk2exe'
+
+          Invoke-WebRequest -Uri $ahk2ExeAsset.browser_download_url -OutFile $ahk2ExeZipPath
+          Expand-Archive -Path $ahk2ExeZipPath -DestinationPath $ahk2ExeInstallDir -Force
+
+          $ahk2Exe = Get-ChildItem -Path $ahk2ExeInstallDir -Recurse -Filter 'Ahk2Exe.exe' |
             Select-Object -First 1
           $baseExe = Get-ChildItem -Path $installDir -Recurse -Filter 'AutoHotkey64.exe' |
             Select-Object -First 1
@@ -72,13 +90,34 @@ jobs:
             throw "Icon file not found: $iconPath"
           }
 
-          & "$env:AHK2EXE" /in ".\SymbolKey.ahk" /out "$outputPath" /base "$env:AHK_BASE_EXE" /icon "$iconPath"
+          # Ahk2Exe.exe is a GUI-subsystem application, so invoking it directly
+          # returns before compilation completes. Start-Process -Wait blocks
+          # until the process exits so the output file is guaranteed to exist.
+          $ahk2ExeArgs = @(
+            '/in', '.\SymbolKey.ahk',
+            '/out', $outputPath,
+            '/base', $env:AHK_BASE_EXE,
+            '/icon', $iconPath
+          )
+
+          $process = Start-Process -FilePath $env:AHK2EXE -ArgumentList $ahk2ExeArgs -Wait -PassThru -NoNewWindow
+
+          if ($process.ExitCode -ne 0) {
+            throw "Ahk2Exe exited with code $($process.ExitCode)."
+          }
 
           if (-not (Test-Path $outputPath)) {
             throw "Compilation finished without creating $outputPath."
           }
 
           "RELEASE_ASSET=$outputPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Upload compiled executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SymbolKey
+          path: ${{ env.RELEASE_ASSET }}
+          if-no-files-found: error
 
       - name: Publish GitHub release
         if: ${{ !inputs.dry_run }}
