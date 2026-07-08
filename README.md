@@ -1,8 +1,6 @@
 # SymbolKey
 
-<div style="float: left; margin-right: 16px; margin-bottom: 8px;">
-  <img src="compilation-assets/SymbolKey-icon-128-256.png" alt="SymbolKey logo" width="128" />
-</div>
+<img align="left" src="compilation-assets/SymbolKey-icon-128-256.png" alt="SymbolKey logo" width="128" />
 
 SymbolKey is a tiny AutoHotkey v2 utility for Windows that lets you type hard-to-reach symbols with one hotkey.
 
@@ -11,6 +9,8 @@ Press your chosen hotkey once to insert the first enabled symbol. Press it again
 It works well for currency symbols such as `$`, `€`, `£`, `₹`, and `¥`, but it is not limited to money. You can use it for legal marks, typographic marks, math symbols, arrows, emoji, or any custom symbol you add.
 
 ## Why SymbolKey exists
+
+<img align="left" hspace="20" src=".github/README-SymbolKey-screenshot.png" alt="Screenshot of SymbolKey GUI" width="350" />
 
 I kept searching the web for things like "gbp symbol", "euro symbol", "rupee symbol", "yen symbol", "copyright symbol", and "section sign", then copying the character from the results. That is slow for something that should take one keystroke.
 
