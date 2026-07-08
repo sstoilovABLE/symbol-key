@@ -236,9 +236,9 @@ ShowSettingsGui() {
         "Press the hotkey repeatedly to cycle. The cycle resets after "
         Round(CycleTimeoutMs / 1000) " seconds of inactivity, or as soon as "
         "you press any other keyboard key — whichever happens first.")
-    LV := SettingsGui.Add("ListView", "w360 r10 Checked -Multi NoSortHdr", ["Symbol", "Name"])
-    LV.ModifyCol(1, 80)
-    LV.ModifyCol(2, 250)
+    LV := SettingsGui.Add("ListView", "w270 r10 Checked -Multi NoSortHdr", ["Symbol", "Name"])
+    LV.ModifyCol(1, 55)
+    LV.ModifyCol(2, 195)
     LV.OnEvent("DoubleClick", RenameRow)
 
     ; Build row list: saved order first (enabled), then remaining known symbols
@@ -268,12 +268,16 @@ ShowSettingsGui() {
         RowKeys.Push(row[2])
     }
 
-    SettingsGui.Add("Button", "xm w80", "Move Up").OnEvent("Click", (*) => MoveRow(-1))
-    SettingsGui.Add("Button", "x+10 w80", "Move Down").OnEvent("Click", (*) => MoveRow(1))
-    SettingsGui.Add("Button", "x+10 w80", "Rename").OnEvent("Click", RenameClicked)
-    SettingsGui.Add("Button", "x+10 w80", "Delete").OnEvent("Click", DeleteRow)
+    ; Action buttons run vertically to the right of the list to save space and
+    ; cut the whitespace a horizontal row left underneath the ListView.
+    SettingsGui.Add("Button", "x+10 yp w80", "Move Up").OnEvent("Click", (*) => MoveRow(-1))
+    SettingsGui.Add("Button", "xp y+8 w80", "Move Down").OnEvent("Click", (*) => MoveRow(1))
+    SettingsGui.Add("Button", "xp y+8 w80", "Rename").OnEvent("Click", RenameClicked)
+    SettingsGui.Add("Button", "xp y+8 w80", "Delete").OnEvent("Click", DeleteRow)
 
-    SettingsGui.Add("Text", "xm y+15", "Add a custom symbol:")
+    ; Resume the rest of the layout below the ListView, not below the buttons.
+    LV.GetPos(&lvX, &lvY, &lvW, &lvH)
+    SettingsGui.Add("Text", "xm y" (lvY + lvH + 15), "Add a custom symbol:")
     CustomEdit := SettingsGui.Add("Edit", "x+10 w80 Limit10")
     SettingsGui.Add("Button", "x+10 w60", "Add").OnEvent("Click", AddCustom)
 
