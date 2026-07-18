@@ -29,6 +29,7 @@ CurrentHotkey := ""             ; currently registered hotkey
 CycleIndex := 0                 ; 0 = not cycling
 LastPressTick := 0
 Suppressing := false            ; true while this script is sending its own keystrokes
+OtherKeyHook := 0               ; watches for one real non-hotkey key to reset cycling
 
 ; Modifier keys are excluded from the "any other key" interrupt set because
 ; they are held down as part of *composing* the symbol hotkey itself
@@ -56,7 +57,6 @@ OnMessage(0x0200, WM_MOUSEMOVE)   ; WM_MOUSEMOVE: hover tooltip
 
 LoadSettings()
 ApplyHotkey(IniRead(SettingsFile, "General", "Hotkey", "+4"))
-RegisterInterruptKeys()
 
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Settings", (*) => ShowSettingsGui())
@@ -86,12 +86,14 @@ ApplyHotkey(newHotkey) {
     }
     CurrentHotkey := newHotkey
     CycleIndex := 0
+    StopInterruptWatcher()
     if (newHotkey != "")
         Hotkey(newHotkey, OnSymbolKey, "On")
 }
 
 OnSymbolKey(*) {
     global CycleIndex, LastPressTick, ActiveSymbols, Suppressing
+    StopInterruptWatcher()
     if (ActiveSymbols.Length = 0) {
         ; Nothing enabled: pass the key through as typed
         PassThrough()
@@ -112,42 +114,94 @@ OnSymbolKey(*) {
     SendText(ActiveSymbols[CycleIndex])
     Suppressing := false
     LastPressTick := now
+    StartInterruptWatcher()
 }
 
-; Registers every keyboard key (except modifiers) as a pass-through hotkey
-; that resets the cycle. This way, pressing any other key breaks the "keep
-; pressing to cycle" flow immediately, rather than only after the 3-second
-; timeout. AHK gives an exact-modifier hotkey (like the symbol hotkey
-; itself) precedence over these "*"-wildcard ones for the same keystroke,
-; so this doesn't interfere with the symbol hotkey's own key.
-RegisterInterruptKeys() {
-    global ModifierVKs
-    loop 254 {
-        vk := A_Index
-        if ModifierVKs.Has(vk)
-            continue
-        try Hotkey(Format("~*vk{:X}", vk), ResetCycle, "On")
+; Watches for the next real keypress after SymbolKey types a symbol. Using
+; InputHook avoids registering every key on the keyboard as a hotkey, which
+; could trigger AutoHotkey's "too many hotkeys" warning during normal typing.
+StartInterruptWatcher() {
+    global OtherKeyHook
+    ; Build the InputHook once and reuse it; restarting a stopped hook is far
+    ; cheaper than allocating a new one (and re-hooking the keyboard) on every
+    ; keypress, which matters while the hotkey auto-repeats.
+    if !IsObject(OtherKeyHook) {
+        OtherKeyHook := InputHook("V L0")
+        OtherKeyHook.KeyOpt("{All}", "N")
+        OtherKeyHook.OnKeyDown := InterruptKeyDown
     }
+    if !OtherKeyHook.InProgress
+        OtherKeyHook.Start()
+    SetTimer(ResetCycleAfterTimeout, -CycleTimeoutMs)
 }
 
-; Ignore resets caused by this script's own simulated keystrokes (e.g. the
-; backspace/retype used while cycling), so cycling doesn't reset itself.
-ResetCycle(*) {
-    global CycleIndex, Suppressing
-    if Suppressing
+StopInterruptWatcher() {
+    global OtherKeyHook
+    SetTimer(ResetCycleAfterTimeout, 0)
+    if (IsObject(OtherKeyHook) && OtherKeyHook.InProgress)
+        try OtherKeyHook.Stop()
+}
+
+; Ignore modifiers and the symbol hotkey itself; anything else immediately
+; ends the current cycle. (The watcher is always stopped before this script
+; sends its own keystrokes, so it never observes them and no Suppressing check
+; is needed here.)
+InterruptKeyDown(ih, vk, sc) {
+    global ModifierVKs, CycleIndex
+    if ModifierVKs.Has(vk) || IsCurrentHotkeyPress(vk)
         return
     CycleIndex := 0
+    StopInterruptWatcher()
+}
+
+ResetCycleAfterTimeout() {
+    global CycleIndex
+    CycleIndex := 0
+    StopInterruptWatcher()
 }
 
 PassThrough() {
     global CurrentHotkey, Suppressing
     ; Re-send the hotkey's own key so it behaves normally
-    key := RegExReplace(CurrentHotkey, "^[#!^+<>*~$]+")
+    key := HotkeyBaseKey(CurrentHotkey)
     mods := SubStr(CurrentHotkey, 1, StrLen(CurrentHotkey) - StrLen(key))
     mods := RegExReplace(mods, "[*~$<>]")   ; strip non-modifier prefixes
     Suppressing := true
     Send("{Blind}" mods "{" key "}")
     Suppressing := false
+}
+
+HotkeyBaseKey(hk) {
+    return RegExReplace(hk, "^[#!^+<>*~$]+")
+}
+
+IsCurrentHotkeyPress(vk) {
+    global CurrentHotkey
+    key := HotkeyBaseKey(CurrentHotkey)
+    if (key = "")
+        return false
+    try
+        keyVk := GetKeyVK(key)
+    catch
+        return false
+    if (vk != keyVk)
+        return false
+    mods := SubStr(CurrentHotkey, 1, StrLen(CurrentHotkey) - StrLen(key))
+    ; The symbol hotkey is registered without a wildcard, so AutoHotkey only
+    ; fires it on an *exact* modifier match. Mirror that: every modifier the
+    ; hotkey names must be held, and every modifier it does not name must be
+    ; released. Otherwise this is a different keystroke (e.g. Ctrl+Shift+4 vs a
+    ; Shift+4 hotkey) and it should reset the cycle rather than be ignored.
+    winDown := GetKeyState("LWin", "P") || GetKeyState("RWin", "P")
+    if ((InStr(mods, "+") > 0) != (GetKeyState("Shift", "P") = 1))
+        return false
+    if ((InStr(mods, "^") > 0) != (GetKeyState("Ctrl", "P") = 1))
+        return false
+    if ((InStr(mods, "!") > 0) != (GetKeyState("Alt", "P") = 1))
+        return false
+    if ((InStr(mods, "#") > 0) != (winDown = 1))
+        return false
+    return true
 }
 
 ; ------------------------------------------------------------
@@ -318,10 +372,12 @@ ShowSettingsGui() {
     WinActivate("ahk_id " SettingsGui.Hwnd)
 }
 
-; While the hotkey field has keyboard focus, suspend the symbol hotkey and
-; the per-key interrupt hotkeys. Otherwise pressing e.g. Shift+4 to *set* the
-; hotkey would instead fire the symbol hotkey - swallowing the keystroke
-; before the field could see it, which is what made Shift+4 show up as "None".
+; While the hotkey field has keyboard focus, suspend the symbol hotkey.
+; Otherwise pressing e.g. Shift+4 to *set* the hotkey would instead fire the
+; symbol hotkey - swallowing the keystroke before the field could see it, which
+; is what made Shift+4 show up as "None". (The symbol-cycle interrupt watcher is
+; an InputHook, not a hotkey, so Suspend does not touch it; that's fine, since a
+; cycle can't be mid-flight while you're editing the hotkey field.)
 ; The Hotkey control has no Focus/LoseFocus event, so we poll Gui.FocusedCtrl
 ; (A_IsSuspended is the single source of truth, so this stays correct even
 ; across window close/reopen).
@@ -454,6 +510,9 @@ SaveClicked(*) {
 
 ; Closes the window: stop watching for focus and make sure the app's hotkeys
 ; are re-enabled in case it was closed while the hotkey field held focus.
+; The symbol-cycle interrupt watcher is intentionally left alone: closing the
+; Settings window should not change whether the next real keypress resets an
+; active symbol cycle.
 CloseSettingsGui() {
     global SettingsGui
     SetTimer(WatchHotkeyFocus, 0)
